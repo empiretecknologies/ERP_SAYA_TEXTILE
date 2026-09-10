@@ -26,7 +26,7 @@ namespace Empire_ERP.Controllers
             MemoryStream stream = new MemoryStream();
             Rectangle pageSize = request.IsLandscape ? PageSize.A4.Rotate() : PageSize.A4;
 
-            Document document = new Document(pageSize, 25f, 25f, 110f, 40f);
+            Document document = new Document(pageSize, 25f, 25f, 65f, 40f);
             PdfWriter writer = PdfWriter.GetInstance(document, stream);
             writer.CloseStream = false;
 
@@ -63,11 +63,14 @@ namespace Empire_ERP.Controllers
                 if (flatList.Count == 0)
                     continue;
 
-                DataTable dt = JsonConvert.DeserializeObject<DataTable>(JsonConvert.SerializeObject(flatList));
+                // Build from every row's keys so a missing group field on row 1
+                // cannot leave later group columns as DBNull on that row.
+                DataTable dt = BuildGridDataTable(flatList, gridReq.GroupColumnsCap);
 
                 if (dt == null || dt.Rows.Count == 0)
                     continue;
 
+                FillBlankNestedGroupValues(dt, gridReq.GroupColumnsCap);
                 SortDataTableByGroups(ref dt, gridReq.GroupColumnsCap);
 
                 var visibleCols = dt.Columns
@@ -107,18 +110,22 @@ namespace Empire_ERP.Controllers
 
             Dictionary<string, float> columnWidths = new Dictionary<string, float>()
             {
-                { "Date", 65f },
+                { "Date", 55f },
                 { "Due Date", 60f },
                 { "Transaction #", 150f },
+                { "Doc", 30f },
+                { "Sale Rate", 60f },
+
                 { "Chq No", 80f },
                 { "Chq Date", 70f },
                 { "Description", 240f },
-                { "Account Name", 240f },
                 { "Debit", 60f },
                 { "Credit", 60f },
                 { "Balance", 70f },
                 { "Color", 75f },
                 { "Size", 75f },
+                { "Current Stock", 70f },
+                //{ "Sale Rate", 60f },
                 { "Qty", 55f },
                 { "Disc %", 70f },
                 { "Amount", 65f },
@@ -212,7 +219,6 @@ namespace Empire_ERP.Controllers
                     string val = r[col.ColumnName]?.ToString() ?? "";
                     PdfPCell cell;
                     bool isTransactionColumn = col.ColumnName == "Transaction #";
-
                     if (IsNumericColumn(col.ColumnName))
                     {
                         decimal num = 0;
@@ -228,12 +234,20 @@ namespace Empire_ERP.Controllers
                         cell = new PdfPCell(new Phrase(displayValue, GetFont(7, Font.NORMAL, isTransactionColumn ? themeColor : BaseColor.BLACK)))
                         { HorizontalAlignment = Element.ALIGN_RIGHT };
                     }
+                    //else
+                    //{
+                    //    string newVal = val == "1900-01-01" ? "" : val;
+                    //    if (col.ColumnName.Contains("Date") && DateTime.TryParse(newVal, out DateTime parsedDate))
+                    //        newVal = parsedDate.ToString("dd-MM-yy");
+
+                    //    cell = new PdfPCell(new Phrase(newVal, GetFont(7, Font.NORMAL, isTransactionColumn ? themeColor : BaseColor.BLACK)))
+                    //    { HorizontalAlignment = Element.ALIGN_CENTER };
+                    //}
                     else
                     {
                         string newVal = val == "1900-01-01" ? "" : val;
                         if (col.ColumnName.Contains("Date") && DateTime.TryParse(newVal, out DateTime parsedDate))
                             newVal = parsedDate.ToString("dd-MM-yy");
-
 
                         if (col.ColumnName.Equals("doc", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(newVal))
                         {
@@ -338,9 +352,6 @@ namespace Empire_ERP.Controllers
                             cell = new PdfPCell(new Phrase(newVal, GetFont(7, Font.NORMAL, isTransactionColumn ? themeColor : BaseColor.BLACK)))
                             { HorizontalAlignment = Element.ALIGN_CENTER };
                         }
-
-                        //cell = new PdfPCell(new Phrase(newVal, GetFont(7, Font.NORMAL, isTransactionColumn ? themeColor : BaseColor.BLACK)))
-                        //{ HorizontalAlignment = Element.ALIGN_CENTER };
                     }
 
                     if (colIndex == 0) cell.Border &= ~Rectangle.LEFT_BORDER;
@@ -352,8 +363,6 @@ namespace Empire_ERP.Controllers
                     table.AddCell(cell);
                 }
             }
-
-
             for (int level = groupColumns.Count - 1; level >= 0; level--)
             {
                 if (!string.IsNullOrEmpty(lastGroupValues[level]))
@@ -361,13 +370,9 @@ namespace Empire_ERP.Controllers
                     AddTotals(table, visibleColumns, groupTotals[level], GetFont, lastDate, lastAmount);
                 }
             }
-
             AddTotals(table, visibleColumns, grandTotals, GetFont, lastDate, lastAmount);
             document.Add(table);
-
-
         }
-
 
         void AddGridToPDF(Document document, GridReport grid, BaseColor themeColor, Font defaultFont, DateTime? lastDate, decimal? lastAmount, int gridCount)
         {
@@ -426,9 +431,11 @@ namespace Empire_ERP.Controllers
         bool IsNumericColumn(string col)
         {
             return new[] { "Amount", "Debit", "Credit", "Balance", "Total", "Qty","Due Year", "Net Amount", "Disc Amt", "Disc %", "Remaining", "Advance",
-                         "Tax Amt " ,"Bill Amount", "Recieved Amt ", "Tax" ,"Commission Value" , "Commission %","Discount","Quantity","Due Month","Due Days"}
+                         "Tax Amt " ,"Bill Amount", "Recieved Amt ", "Tax" ,"Commission Value" , "Commission %","Discount","Quantity","Due Month","Due Days","0 To 15",
+                "16 To 30","31 To 45","46 To 60","61 To 90","91 To 120","120 Plus","Balance"}
                    .Any(x => col.ToLower().Contains(x.ToLower()));
         }
+
 
         bool IsNumericValue(string value)
         {
@@ -478,9 +485,11 @@ namespace Empire_ERP.Controllers
 
             HashSet<string> totalColumns = IslastDate
                 ? new HashSet<string> { "Debit", "Credit", "Amount", "Due Amount", "NetAmount", "Qty", "Disc Amt", "Disc %" , "Remaining", "Advance", "Tax Amt" ,
-                    "Bill Amount", "Recieved Amt ", "Tax", "Commission Value", "Commission %", "Discount" }
+                    "Bill Amount", "Recieved Amt ", "Tax", "Commission Value", "Commission %", "Discount" ,"Total Amount","0 To 15",
+                "16 To 30","31 To 45","46 To 60","61 To 90","91 To 120","120 Plus"}
                 : new HashSet<string> { "Debit", "Credit", "Amount", "Due Amount", "Description", "Net Amount", "Qty", "Disc Amt", "Disc %" , "Remaining",
-                    "Advance","Tax %", "Tax Amt", "Bill Amount", "Recieved Amt","Commission Value", "Commission %","Discount","Quantity" };
+                    "Advance","Tax %", "Tax Amt", "Bill Amount", "Recieved Amt","Commission Value", "Commission %","Discount","Quantity","Total Amount","0 To 15",
+                "16 To 30","31 To 45","46 To 60","61 To 90","91 To 120","120 Plus","Balance" };
 
             BaseFont bf = BaseFont.CreateFont(
                 @"C:\Windows\Fonts\arialbd.ttf",
@@ -488,18 +497,26 @@ namespace Empire_ERP.Controllers
                 BaseFont.EMBEDDED);
 
             Font customBoldFont = new Font(bf, 6.5f, Font.NORMAL, BaseColor.BLACK);
-
+            string[] months = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
             for (int i = 0; i < cols.Count; i++)
             {
                 var col = cols[i];
                 PdfPCell cell;
-
-                if (totals.ContainsKey(col.ColumnName) && totalColumns.Contains(col.ColumnName))
+                bool isMonthColumn = months.Any(m => col.ColumnName.StartsWith(m, StringComparison.OrdinalIgnoreCase));
+                if ((totals.ContainsKey(col.ColumnName) && totalColumns.Contains(col.ColumnName)) || isMonthColumn)
                 {
-                    decimal totalValue = totals[col.ColumnName];
+                    decimal totalValue = 0;
+                    if (totals.ContainsKey(col.ColumnName))
+                    {
+                        totalValue = totals[col.ColumnName];
+                    }
+                    else
+                    {
+                        totalValue = 0;
+                    }
                     string val;
                     BaseColor textColor = BaseColor.BLACK;
-                    
+
                     if (totalValue == 0)
                     {
                         val = "";
@@ -507,33 +524,13 @@ namespace Empire_ERP.Controllers
                     else if (totalValue < 0)
                     {
                         // Negative value: show in round brackets and red color
-                        //val = $"({string.Format("{0:N0}", Math.Abs(totalValue))})";
-                        //textColor = BaseColor.RED;
-
-                        if (col.ColumnName == "Amount")
-                        {
-                            val = $"({string.Format("{0:N0}", Math.Abs(totalValue))})";
-                            textColor = BaseColor.RED;
-                        }
-                        else
-                        {
-
-                            val = $"(${Math.Abs(totalValue):N0})";
-                            textColor = BaseColor.RED;
-                        }
+                        val = $"({string.Format("{0:N0}", Math.Abs(totalValue))})";
+                        textColor = BaseColor.RED;
                     }
                     else
                     {
                         // Positive value: normal format
-                        if(col.ColumnName == "Amount")
-                        {
-                            val = "$" + string.Format("{0:N0}", totalValue);
-                        }
-                        else
-                        {
-                            val = string.Format("{0:N0}", totalValue);
-                        }
-                        
+                        val = string.Format("{0:N0}", totalValue);
                     }
 
                     Font totalFont = new Font(bf, 6.5f, Font.NORMAL, textColor);
@@ -560,18 +557,7 @@ namespace Empire_ERP.Controllers
             }
 
         }
-        private System.Drawing.Imaging.ImageCodecInfo GetEncoder(System.Drawing.Imaging.ImageFormat format)
-        {
-            System.Drawing.Imaging.ImageCodecInfo[] codecs = System.Drawing.Imaging.ImageCodecInfo.GetImageEncoders();
-            foreach (System.Drawing.Imaging.ImageCodecInfo codec in codecs)
-            {
-                if (codec.FormatID == format.Guid)
-                {
-                    return codec;
-                }
-            }
-            return null;
-        }
+
         void GenerateDynamicMultiLevelGroupedPDF(
             Document document,
             DataTable dt,
@@ -595,14 +581,14 @@ namespace Empire_ERP.Controllers
             // Define column widths
             Dictionary<string, float> columnWidths = new Dictionary<string, float>()
             {
-                { "Date", 65f },
+                { "Date", 55f },
                 { "Due Date", 60f },
                 { "Transaction #", 150f },
+                { "Doc", 80f },
                 { "Bill Type", 80f },
                 { "Chq No", 80f },
                 { "Chq Date", 70f },
                 { "Description", 240f },
-                { "Account Name", 240f },
                 { "Debit", 60f },
                 { "Credit", 60f },
                 { "Balance", 70f },
@@ -638,13 +624,14 @@ namespace Empire_ERP.Controllers
 
             List<Dictionary<string, decimal>> groupLevelTotals = new List<Dictionary<string, decimal>>();
             Dictionary<string, decimal> grandTotals = new Dictionary<string, decimal>();
+            var monthPattern = @"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)\b";
 
             for (int i = 0; i < groupColumns.Count; i++)
             {
                 Dictionary<string, decimal> levelTotals = new Dictionary<string, decimal>();
                 foreach (var col in visibleColumns)
                 {
-                    if (IsNumericColumn(col.ColumnName))
+                    if (IsNumericColumn(col.ColumnName) || Regex.IsMatch(col.ColumnName, monthPattern, RegexOptions.IgnoreCase))
                         levelTotals[col.ColumnName] = 0;
                 }
                 groupLevelTotals.Add(levelTotals);
@@ -653,7 +640,7 @@ namespace Empire_ERP.Controllers
             // Initialize grand totals
             foreach (var col in visibleColumns)
             {
-                if (IsNumericColumn(col.ColumnName))
+                if (IsNumericColumn(col.ColumnName) || Regex.IsMatch(col.ColumnName, monthPattern, RegexOptions.IgnoreCase))
                     grandTotals[col.ColumnName] = 0;
             }
 
@@ -667,47 +654,46 @@ namespace Empire_ERP.Controllers
             // Loop through all data rows
             foreach (DataRow row in dt.Rows)
             {
-                // Check each group level for changes
+                List<string> rowGroupValues = new List<string>(groupColumns.Count);
+                for (int i = 0; i < groupColumns.Count; i++)
+                    rowGroupValues.Add(GetGroupCellValue(row, groupColumns[i]));
+
+                // First level whose value differs from the open group.
+                // Headers for this level AND every deeper level must be written
+                // before the data row, otherwise the first child row is printed
+                // under the parent (e.g. Model's first row under Client).
+                int changeLevel = -1;
                 for (int level = 0; level < groupColumns.Count; level++)
                 {
-                    string groupColumn = groupColumns[level];
-                    string currentGroupValue = row[groupColumn]?.ToString() ?? "";
-
-                    // Check if this group level has changed
-                    if (currentGroupValue != currentGroupValues[level])
+                    if (!string.Equals(rowGroupValues[level], currentGroupValues[level], StringComparison.Ordinal))
                     {
-                        // If this is the first group level (level 0), we need to close all child groups first
+                        changeLevel = level;
+                        break;
+                    }
+                }
+
+                if (changeLevel >= 0)
+                {
+                    for (int level = groupColumns.Count - 1; level >= changeLevel; level--)
+                    {
+                        if (!string.IsNullOrEmpty(currentGroupValues[level]))
+                            AddTotals(table, visibleColumns, groupLevelTotals[level], GetFont, lastDate, lastAmount);
+                    }
+
+                    for (int level = changeLevel; level < groupColumns.Count; level++)
+                    {
+                        string groupColumn = groupColumns[level];
+                        string currentGroupValue = rowGroupValues[level];
+                        currentGroupValues[level] = currentGroupValue;
+
+                        foreach (var key in groupLevelTotals[level].Keys.ToList())
+                            groupLevelTotals[level][key] = 0;
+
+                        if (string.IsNullOrEmpty(currentGroupValue))
+                            continue;
+
                         if (level == 0)
                         {
-                            // First, add totals for all child levels (from deepest to shallowest) before closing parent
-                            for (int childLevel = groupColumns.Count - 1; childLevel > 0; childLevel--)
-                            {
-                                if (!string.IsNullOrEmpty(currentGroupValues[childLevel]))
-                                {
-                                    AddTotals(table, visibleColumns, groupLevelTotals[childLevel], GetFont, lastDate, lastAmount);
-                                }
-                            }
-
-                            // Then add totals for previous first group if exists
-                            if (!string.IsNullOrEmpty(currentGroupValues[0]))
-                            {
-                                AddTotals(table, visibleColumns, groupLevelTotals[0], GetFont, lastDate, lastAmount);
-                            }
-                        }
-                        else
-                        {
-                            // For child levels (level > 0), add totals for previous value at this level
-                            if (!string.IsNullOrEmpty(currentGroupValues[level]))
-                            {
-                                AddTotals(table, visibleColumns, groupLevelTotals[level], GetFont, lastDate, lastAmount);
-                            }
-                        }
-
-                        // If this is the first group level (level 0), add group header and column headers
-                        if (level == 0)
-                        {
-
-                            // Add first group header (font size 8)
                             Font firstGroupFont = new Font(bfBold, 7.5f, Font.NORMAL, BaseColor.BLACK);
                             PdfPCell firstGroupCell = new PdfPCell(new Phrase($"{groupColumn} : {currentGroupValue}", firstGroupFont));
                             firstGroupCell.Colspan = visibleColumns.Count;
@@ -716,12 +702,10 @@ namespace Empire_ERP.Controllers
                             firstGroupCell.HorizontalAlignment = Element.ALIGN_LEFT;
                             firstGroupCell.BackgroundColor = BaseColor.WHITE;
 
-                            // Check if this first group has child groups
                             bool hasChildGroups = groupColumns.Count > 1 && dt.AsEnumerable()
-                                .Any(r => r[groupColumn]?.ToString() == currentGroupValue &&
-                                          !string.IsNullOrWhiteSpace(r[groupColumns[1]]?.ToString()));
+                                .Any(r => GetGroupCellValue(r, groupColumn) == currentGroupValue &&
+                                          !string.IsNullOrWhiteSpace(GetGroupCellValue(r, groupColumns[1])));
 
-                            // Add bottom border if first group has child groups
                             if (hasChildGroups)
                             {
                                 firstGroupCell.Border = Rectangle.BOTTOM_BORDER;
@@ -744,7 +728,7 @@ namespace Empire_ERP.Controllers
 
                                 PdfPCell headerCell = new PdfPCell(new Phrase(formatted, headerFont));
 
-                                string[] rightAlignColumns = { "Debit", "Credit", "Amount", "Net Amount", "Balance", "Qty" ,"Due Amount" ,"Due Year" , "Due Month" ,"Due Days"};
+                                string[] rightAlignColumns = { "Debit", "Credit", "Amount", "Net Amount", "Balance", "Qty", "Due Amount", "Due Year", "Due Month", "Due Days" };
                                 if (rightAlignColumns.Contains(formatted))
                                     headerCell.HorizontalAlignment = Element.ALIGN_RIGHT;
                                 else
@@ -759,15 +743,9 @@ namespace Empire_ERP.Controllers
 
                                 table.AddCell(headerCell);
                             }
-
-
-                            // Reset first level totals
-                            foreach (var key in groupLevelTotals[0].Keys.ToList())
-                                groupLevelTotals[0][key] = 0;
                         }
                         else
                         {
-                            // For subsequent group levels (level 1, 2, etc.), add group header (font size 7)
                             Font subGroupFont = new Font(bfBold, 7f, Font.NORMAL, BaseColor.BLACK);
                             PdfPCell subGroupCell = new PdfPCell(new Phrase($"{groupColumn} : {currentGroupValue}", subGroupFont));
                             subGroupCell.Colspan = visibleColumns.Count;
@@ -778,35 +756,6 @@ namespace Empire_ERP.Controllers
                             subGroupCell.Border = Rectangle.NO_BORDER;
 
                             table.AddCell(subGroupCell);
-
-                            // Reset this level totals
-                            foreach (var key in groupLevelTotals[level].Keys.ToList())
-                                groupLevelTotals[level][key] = 0;
-                        }
-
-                        // Update current group value for this level
-                        currentGroupValues[level] = currentGroupValue;
-
-                        // Reset all lower level group values
-                        for (int resetLevel = level + 1; resetLevel < groupColumns.Count; resetLevel++)
-                        {
-                            currentGroupValues[resetLevel] = "";
-                            foreach (var key in groupLevelTotals[resetLevel].Keys.ToList())
-                                groupLevelTotals[resetLevel][key] = 0;
-                        }
-
-                        // If level 0 changed, continue checking child levels in the same row
-                        // This ensures first child group header is added immediately
-                        if (level == 0 && groupColumns.Count > 1)
-                        {
-                            // Continue to check child levels in the same row
-                            // Don't break, let the loop continue to check level 1, 2, etc.
-                            continue;
-                        }
-                        else
-                        {
-                            // Break after processing the first changed level (for child levels)
-                            break;
                         }
                     }
                 }
@@ -819,7 +768,7 @@ namespace Empire_ERP.Controllers
                     PdfPCell cell;
                     bool isTransactionColumn = col.ColumnName == "Transaction #";
 
-                    if (IsNumericColumn(col.ColumnName))
+                    if (IsNumericColumn(col.ColumnName) || Regex.IsMatch(col.ColumnName, monthPattern, RegexOptions.IgnoreCase))
                     {
                         decimal num = 0;
                         if (IsNumericValue(val))
@@ -836,7 +785,7 @@ namespace Empire_ERP.Controllers
                         // Format negative values with round brackets and red color
                         string displayValue;
                         BaseColor textColor;
-                        
+
                         if (string.IsNullOrWhiteSpace(val) || val == "0" || num == 0)
                         {
                             displayValue = "";
@@ -903,20 +852,206 @@ namespace Empire_ERP.Controllers
             document.Add(table);
         }
 
+        void FillBlankNestedGroupValues(DataTable dt, List<string> groupColumns)
+        {
+            if (dt == null || dt.Rows.Count == 0 || groupColumns == null || groupColumns.Count == 0)
+                return;
+
+            foreach (var col in groupColumns)
+            {
+                if (!string.IsNullOrEmpty(col) && !dt.Columns.Contains(col))
+                    dt.Columns.Add(col, typeof(string));
+            }
+
+            int n = dt.Rows.Count;
+            int gCount = groupColumns.Count;
+            string[][] values = new string[n][];
+
+            for (int i = 0; i < n; i++)
+            {
+                values[i] = new string[gCount];
+                for (int g = 0; g < gCount; g++)
+                    values[i][g] = GetGroupCellValue(dt.Rows[i], groupColumns[g]);
+            }
+
+            // Outer-to-inner: an empty child key (e.g. Model on the first row of a Client)
+            // inherits the nearest non-empty value that still shares the same parents.
+            // That stops the first detail row from rendering under the parent header.
+            for (int g = 0; g < gCount; g++)
+            {
+                for (int i = n - 1; i >= 0; i--)
+                {
+                    if (!string.IsNullOrEmpty(values[i][g]))
+                        continue;
+
+                    // Copy only from a following row. The PDF is shifted by one: the group
+                    // key arrives on the next detail row, so the current row must inherit it.
+                    string found = null;
+                    for (int j = i + 1; j < n; j++)
+                    {
+                        bool sameParents = true;
+                        for (int a = 0; a < g; a++)
+                        {
+                            if (!string.Equals(values[j][a], values[i][a], StringComparison.Ordinal))
+                            {
+                                sameParents = false;
+                                break;
+                            }
+                        }
+                        if (!sameParents)
+                            break;
+                        if (!string.IsNullOrEmpty(values[j][g]))
+                        {
+                            found = values[j][g];
+                            break;
+                        }
+                    }
+
+                    if (found != null)
+                    {
+                        values[i][g] = found;
+                        dt.Rows[i][groupColumns[g]] = found;
+                    }
+                }
+            }
+        }
+
+        DataTable BuildGridDataTable(List<Dictionary<string, object>> rows, List<string> groupColumns)
+        {
+            DataTable dt = new DataTable();
+            if (rows == null || rows.Count == 0)
+                return dt;
+
+            foreach (var row in rows)
+            {
+                if (row == null) continue;
+                foreach (var key in row.Keys)
+                {
+                    if (!string.IsNullOrEmpty(key) && !dt.Columns.Contains(key))
+                        dt.Columns.Add(key, typeof(string));
+                }
+            }
+
+            if (groupColumns != null)
+            {
+                foreach (var g in groupColumns)
+                {
+                    if (!string.IsNullOrEmpty(g) && !dt.Columns.Contains(g))
+                        dt.Columns.Add(g, typeof(string));
+                }
+            }
+
+            foreach (var row in rows)
+            {
+                DataRow dr = dt.NewRow();
+                if (row != null)
+                {
+                    foreach (DataColumn col in dt.Columns)
+                    {
+                        if (row.TryGetValue(col.ColumnName, out var val))
+                        {
+                            dr[col.ColumnName] = ConvertGridCellToString(val);
+                            continue;
+                        }
+
+                        string matchKey = row.Keys.FirstOrDefault(k =>
+                            string.Equals(k, col.ColumnName, StringComparison.OrdinalIgnoreCase));
+                        dr[col.ColumnName] = matchKey != null
+                            ? ConvertGridCellToString(row[matchKey])
+                            : "";
+                    }
+                }
+                dt.Rows.Add(dr);
+            }
+
+            return dt;
+        }
+
+        string GetGroupCellValue(DataRow row, string columnName)
+        {
+            if (row == null || row.Table == null || string.IsNullOrEmpty(columnName) || !row.Table.Columns.Contains(columnName))
+                return "";
+
+            object v = row[columnName];
+            if (v == null || v == DBNull.Value)
+                return "";
+
+            return Convert.ToString(v) ?? "";
+        }
+
+        string ConvertGridCellToString(object val)
+        {
+            if (val == null || val == DBNull.Value)
+                return "";
+
+            if (val is JValue jv)
+            {
+                if (jv.Type == JTokenType.Null || jv.Type == JTokenType.Undefined)
+                    return "";
+                val = jv.Value;
+                if (val == null)
+                    return "";
+            }
+
+            if (val is DateTime dateVal)
+                return dateVal.ToString("yyyy-MM-dd");
+
+            return Convert.ToString(val) ?? "";
+        }
+
         void SortDataTableByGroups(ref DataTable dt, List<string> groupColumns)
         {
             if (dt == null || dt.Rows.Count == 0 || groupColumns == null || groupColumns.Count == 0)
                 return;
 
-            string sortExpression = string.Join(", ", groupColumns.Select(c => $"{c} ASC"));
+            foreach (var col in groupColumns)
+            {
+                if (!dt.Columns.Contains(col))
+                    dt.Columns.Add(col, typeof(string));
+            }
 
-            DataView dv = dt.DefaultView;
-            dv.Sort = sortExpression;
-            dt = dv.ToTable();
+            // Keep case-sensitive group keys contiguous while preserving first-appearance order
+            // (matches DevExtreme grid grouping; DataView sort is case-insensitive by default and
+            // can interleave hol-2218 / HOL-2218 rows from raw dataSource order).
+            var rows = dt.AsEnumerable().ToList();
+            var groupOrder = new Dictionary<string, int>(StringComparer.Ordinal);
+            int nextOrder = 0;
+
+            string MakeKey(DataRow r) =>
+                string.Join("\u001f", groupColumns.Select(c => GetGroupCellValue(r, c)));
+
+            foreach (var r in rows)
+            {
+                string key = MakeKey(r);
+                if (!groupOrder.ContainsKey(key))
+                    groupOrder[key] = nextOrder++;
+            }
+
+            var sortedRows = rows
+                .Select((r, idx) => new { Row = r, Index = idx })
+                .OrderBy(x => groupOrder[MakeKey(x.Row)])
+                .ThenBy(x => x.Index)
+                .Select(x => x.Row);
+
+            dt = sortedRows.Any() ? sortedRows.CopyToDataTable() : dt.Clone();
+        }
+        private System.Drawing.Imaging.ImageCodecInfo GetEncoder(System.Drawing.Imaging.ImageFormat format)
+        {
+            System.Drawing.Imaging.ImageCodecInfo[] codecs = System.Drawing.Imaging.ImageCodecInfo.GetImageEncoders();
+            foreach (System.Drawing.Imaging.ImageCodecInfo codec in codecs)
+            {
+                if (codec.FormatID == format.Guid)
+                {
+                    return codec;
+                }
+            }
+            return null;
         }
 
 
     }
+
+    //image work 
 
     public class GridReport
     {
@@ -956,33 +1091,11 @@ namespace Empire_ERP.Controllers
             header.TotalWidth = document.PageSize.Width - document.LeftMargin - document.RightMargin;
             header.SetWidths(new float[] { 33, 33, 33 });
 
-            //PdfPCell companyCell = new PdfPCell(new Phrase(CompanyName, GetFont(13, Font.BOLD, themeColor))); // yaha logo lagana hai 
-            //companyCell.Colspan = 3;
-            //companyCell.Border = Rectangle.NO_BORDER;
-            //companyCell.HorizontalAlignment = Element.ALIGN_LEFT;
-            //header.AddCell(companyCell);
-
-            string logoPath = Path.Combine(Environment.CurrentDirectory, "wwwroot\\client\\LogoAndBackground\\logo.png");
-            if (File.Exists(logoPath))
-            {
-                Image logo = Image.GetInstance(logoPath);
-                logo.ScaleToFit(120f, 60f);
-                PdfPCell companyCell = new PdfPCell(logo);
-                companyCell.Colspan = 3;
-                companyCell.Border = Rectangle.NO_BORDER;
-                companyCell.HorizontalAlignment = Element.ALIGN_LEFT;
-                companyCell.PaddingTop = 5f;
-                companyCell.PaddingBottom = 5f;
-
-                header.AddCell(companyCell);
-            }
-            else
-            {
-                PdfPCell companyCell = new PdfPCell(new Phrase(CompanyName, GetFont(13, Font.BOLD, themeColor)));
-                companyCell.Colspan = 3;
-                companyCell.Border = Rectangle.NO_BORDER;
-                header.AddCell(companyCell);
-            }
+            PdfPCell companyCell = new PdfPCell(new Phrase(CompanyName, GetFont(13, Font.BOLD, themeColor)));
+            companyCell.Colspan = 3;
+            companyCell.Border = Rectangle.NO_BORDER;
+            companyCell.HorizontalAlignment = Element.ALIGN_LEFT;
+            header.AddCell(companyCell);
 
             PdfPCell reportCell = new PdfPCell(new Phrase(ReportName, GetFont(9, Font.BOLD, themeColor)));
             reportCell.Colspan = 3;

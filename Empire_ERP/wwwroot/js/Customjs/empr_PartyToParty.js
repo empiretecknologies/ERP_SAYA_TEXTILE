@@ -570,6 +570,8 @@
                 var IsValid = true;
                 var V_DATE = $("#V_DATE").val();
                 var BOOK_TYPE = $('#PartyType').dxSelectBox('option', 'value');
+                var CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
+                var CRATE = $("#Rate").val();
 
                 if (V_DATE == '' || V_DATE == null || V_DATE == undefined) {
                     empr_helper.notify("Transaction date is required.", 2);
@@ -579,6 +581,18 @@
 
                 if (BOOK_TYPE == '' || BOOK_TYPE == null || BOOK_TYPE == undefined) {
                     empr_helper.notify("Please select book type.", 2);
+                    IsValid = false;
+                    return false;
+                }
+
+                if (CURR_CODE == '' || CURR_CODE == null || CURR_CODE == undefined) {
+                    empr_helper.notify("Please select currency.", 2);
+                    IsValid = false;
+                    return false;
+                }
+
+                if (CRATE == '' || CRATE == null || CRATE == undefined || CRATE == 0) {
+                    empr_helper.notify("Please enter currency rate.", 2);
                     IsValid = false;
                     return false;
                 }
@@ -677,6 +691,8 @@
             var IsValid = true;
             var V_DATE = $("#V_DATE").val();
             var PARTY_TYPE = $('#PartyType').dxSelectBox('option', 'value');
+            var CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
+            var CRATE = $("#Rate").val();
 
             if (V_DATE == '' || V_DATE == null || V_DATE == undefined) {
                 empr_helper.notify("Transaction date is required.", 2);
@@ -686,6 +702,18 @@
 
             if (PARTY_TYPE == '' || PARTY_TYPE == null || PARTY_TYPE == undefined) {
                 empr_helper.notify("Please select party.", 2);
+                IsValid = false;
+                return false;
+            }
+
+            if (CURR_CODE == '' || CURR_CODE == null || CURR_CODE == undefined) {
+                empr_helper.notify("Please select currency.", 2);
+                IsValid = false;
+                return false;
+            }
+
+            if (CRATE == '' || CRATE == null || CRATE == undefined || CRATE == 0) {
+                empr_helper.notify("Please enter currency rate.", 2);
                 IsValid = false;
                 return false;
             }

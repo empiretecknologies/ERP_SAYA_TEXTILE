@@ -840,12 +840,6 @@
                     return false;
                 }
 
-                if (BOOK_TYPE == '' || BOOK_TYPE == null || BOOK_TYPE == undefined) {
-                    empr_helper.notify("Please select book type.", 2);
-                    IsValid = false;
-                    return false;
-                }
-
                 detailRecords = $('#DetailContainer').dxDataGrid('instance').option("dataSource");
                 if (Array.isArray(detailRecords) && detailRecords.some(item => item.key !== undefined)) {
                     detailRecords = detailRecords.flatMap(group => group.items || []);
@@ -865,6 +859,18 @@
                         IsValid = false;
                         return false;
                         //console.log("Account at index " + index + " has empty type.");
+                    }
+
+                    if (item.curR_CODE == "" || item.curR_CODE == null || item.curR_CODE == undefined) {
+                        empr_helper.notify("Please select currency at index " + index, 2);
+                        IsValid = false;
+                        return false;
+                    }
+
+                    if (item.crate == "" || item.crate == null || item.crate == undefined || item.crate == 0) {
+                        empr_helper.notify("Please enter currency rate at index " + index, 2);
+                        IsValid = false;
+                        return false;
                     }
 
                     if (item.amt == "" || item.amt == null || item.amt == undefined) {
@@ -923,7 +929,7 @@
                         obj.ASTATUS = $('#ASTATUS').dxSelectBox('option', 'value');
                         obj.V_DATE = $("#V_DATE").val();
                         obj.VOUCHER_NO = $("#VOUCHER_NO").val();
-                        //obj.CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
+                        obj.CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
                         obj.BOOK_TYPE = $('#BookType').dxSelectBox('option', 'value');
                         //obj.CRATE = $("#Rate").val();
                         obj.REMARKS = $("#REMARKS").val();
@@ -970,6 +976,18 @@
                     IsValid = false;
                     return false;
                     //console.log("Account at index " + index + " has empty type.");
+                }
+
+                if (item.curR_CODE == "" || item.curR_CODE == null || item.curR_CODE == undefined) {
+                    empr_helper.notify("Please select currency at index " + index, 2);
+                    IsValid = false;
+                    return false;
+                }
+
+                if (item.crate == "" || item.crate == null || item.crate == undefined || item.crate == 0) {
+                    empr_helper.notify("Please enter currency rate at index " + index, 2);
+                    IsValid = false;
+                    return false;
                 }
 
                 if (item.amt == "" || item.amt == null || item.amt == undefined) {
@@ -1033,7 +1051,7 @@
                     obj.ASTATUS = $('#ASTATUS').dxSelectBox('option', 'value');
                     obj.V_DATE = $("#V_DATE").val();
                     obj.VOUCHER_NO = $("#VOUCHER_NO").val();
-                    //obj.CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
+                    obj.CURR_CODE = $('#Currency').dxSelectBox('option', 'value');
                     obj.BOOK_TYPE = $('#BookType').dxSelectBox('option', 'value');
                     //obj.CRATE = $("#Rate").val();
                     obj.REMARKS = $("#REMARKS").val();

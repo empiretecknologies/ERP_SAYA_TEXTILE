@@ -1499,6 +1499,18 @@ var empr_TexSalesInvoice = {
                 return valid;
             }
 
+            if (item.curR_CODE == "" || item.curR_CODE == null || item.curR_CODE == undefined) {
+                empr_helper.notify("Please select currency at Line No " + (index + 1), 2);
+                valid = false;
+                return valid;
+            }
+
+            if (item.crate == "" || item.crate == null || item.crate == undefined || item.crate == 0) {
+                empr_helper.notify("Please enter currency rate at Line No " + (index + 1), 2);
+                valid = false;
+                return valid;
+            }
+
 
         });
 

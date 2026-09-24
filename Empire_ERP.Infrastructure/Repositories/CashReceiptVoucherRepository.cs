@@ -1367,7 +1367,7 @@ namespace Empire_ERP.Infrastructure.Repositories
                             AS ACT_NAME ,A.DT_DESC AS DESCRIPTION1,
                             A.CRATE,
                             A.AMT AS AMT,
-                            A.CHQ_NO ,A.CHQ_DATE 
+                            A.CHQ_NO ,A.CHQ_DATE , PT.WHT
                             FROM  {table} A
                             LEFT OUTER JOIN TBL_CHART C
                             ON C.ACT_CODE = A.ACT_CODE 
@@ -1419,6 +1419,7 @@ namespace Empire_ERP.Infrastructure.Repositories
                                 dataRow["ChqDate"] = reader["CHQ_DATE"] == DBNull.Value ? null : Convert.ToDateTime(reader["CHQ_DATE"]);
                                 dataRow["Rate"] = reader["CRATE"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CRATE"]);
                                 dataRow["Amt"] = reader["AMT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["AMT"]);
+                                dataRow["WHT"] = reader["WHT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["WHT"]);
                                 dataTable.Rows.Add(dataRow);
                             }
                         }

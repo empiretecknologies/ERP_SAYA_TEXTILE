@@ -2951,6 +2951,8 @@ namespace Empire_ERP.Reports.Datasets {
             
             private global::System.Data.DataColumn columnCredit;
             
+            private global::System.Data.DataColumn columnWHT;
+            
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
             [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
             public CashPaymentDataTable() {
@@ -3082,6 +3084,14 @@ namespace Empire_ERP.Reports.Datasets {
             
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
             [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
+            public global::System.Data.DataColumn WHTColumn {
+                get {
+                    return this.columnWHT;
+                }
+            }
+            
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+            [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
             [global::System.ComponentModel.Browsable(false)]
             public int Count {
                 get {
@@ -3117,7 +3127,7 @@ namespace Empire_ERP.Reports.Datasets {
             
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
             [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
-            public CashPaymentRow AddCashPaymentRow(string ActName, string Desc, string ChqNo, string ChqDate, decimal Amt, decimal Qty, decimal Rate, string Type, string Comment, string Party, double Debit, double Credit) {
+            public CashPaymentRow AddCashPaymentRow(string ActName, string Desc, string ChqNo, string ChqDate, decimal Amt, decimal Qty, decimal Rate, string Type, string Comment, string Party, double Debit, double Credit, decimal WHT) {
                 CashPaymentRow rowCashPaymentRow = ((CashPaymentRow)(this.NewRow()));
                 object[] columnValuesArray = new object[] {
                         ActName,
@@ -3131,7 +3141,8 @@ namespace Empire_ERP.Reports.Datasets {
                         Comment,
                         Party,
                         Debit,
-                        Credit};
+                        Credit,
+                        WHT};
                 rowCashPaymentRow.ItemArray = columnValuesArray;
                 this.Rows.Add(rowCashPaymentRow);
                 return rowCashPaymentRow;
@@ -3166,6 +3177,7 @@ namespace Empire_ERP.Reports.Datasets {
                 this.columnParty = base.Columns["Party"];
                 this.columnDebit = base.Columns["Debit"];
                 this.columnCredit = base.Columns["Credit"];
+                this.columnWHT = base.Columns["WHT"];
             }
             
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
@@ -3195,6 +3207,8 @@ namespace Empire_ERP.Reports.Datasets {
                 base.Columns.Add(this.columnDebit);
                 this.columnCredit = new global::System.Data.DataColumn("Credit", typeof(double), null, global::System.Data.MappingType.Element);
                 base.Columns.Add(this.columnCredit);
+                this.columnWHT = new global::System.Data.DataColumn("WHT", typeof(decimal), null, global::System.Data.MappingType.Element);
+                base.Columns.Add(this.columnWHT);
             }
             
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
@@ -11853,6 +11867,22 @@ namespace Empire_ERP.Reports.Datasets {
             
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
             [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
+            public decimal WHT {
+                get {
+                    try {
+                        return ((decimal)(this[this.tableCashPayment.WHTColumn]));
+                    }
+                    catch (global::System.InvalidCastException e) {
+                        throw new global::System.Data.StrongTypingException("The value for column \'WHT\' in table \'CashPayment\' is DBNull.", e);
+                    }
+                }
+                set {
+                    this[this.tableCashPayment.WHTColumn] = value;
+                }
+            }
+            
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+            [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
             public bool IsActNameNull() {
                 return this.IsNull(this.tableCashPayment.ActNameColumn);
             }
@@ -11993,6 +12023,18 @@ namespace Empire_ERP.Reports.Datasets {
             [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
             public void SetCreditNull() {
                 this[this.tableCashPayment.CreditColumn] = global::System.Convert.DBNull;
+            }
+            
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+            [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
+            public bool IsWHTNull() {
+                return this.IsNull(this.tableCashPayment.WHTColumn);
+            }
+            
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+            [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Data.Design.TypedDataSetGenerator", "17.0.0.0")]
+            public void SetWHTNull() {
+                this[this.tableCashPayment.WHTColumn] = global::System.Convert.DBNull;
             }
         }
         
